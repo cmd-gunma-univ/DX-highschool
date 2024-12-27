@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wi-FiとHostnameの設定ファイル作成(DXハイスクール)</title>
+</head>
+<body>
+    <h1>Wi-FiとHostnameの設定ファイル作成(DXハイスクール)</h1>
+    <form id="configForm">
+        <!-- Wi-Fi Settings -->
+        <label for="ssid">Wi-Fi SSID:</label><br>
+        <input type="text" id="ssid" name="ssid" required><br><br>
+
+        <label for="password">Wi-Fi Password:</label><br>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <!-- Hostname Settings -->
+        <label for="hostname">Hostname:(ホスト名は半角の英字と数字で入力。ハイフンは使えるがスペースや記号などの特殊文字を含めないように。)</label><br>
+        <input type="text" id="hostname" name="hostname" required><br><br>
+
+        <button type="button" onclick="generateFiles()">作成保存</button>
+
+
+<p>
+生成された2つのファイル(wpa_supplicant.conf, hostname)をRaspberry Piのbootパーティションにコピーしてください。
+<br>
+hostname.txtのように".txt"の拡張子が付いている場合は".txt"を削除したファイルに変更してからコピーしてください。
+</p>
+    </form>
+
+    <script>
+        /**
+         * Generate a 256-bit PSK using PBKDF2
+         * @param {string} ssid - Wi-Fi SSID
+         * @param {string} password - Wi-Fi password
+         * @returns {Promise<string>} - A Promise that resolves to the 256-bit PSK in hexadecimal
+         */
+        async function generatePSK(ssid, password) {
+            const encoder = new TextEncoder();
+            const ssidBytes = encoder.encode(ssid);
+            const passwordBytes = encoder.encode(password);
+
+            // Perform PBKDF2 with HMAC-SHA1, 4096 iterations
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw",
+                passwordBytes,
+                { name: "PBKDF2" },
+                false,
+                ["deriveBits"]
+            );
+
+            const derivedBits = await crypto.subtle.deriveBits(
+                {
+                    name: "PBKDF2",
+                    salt: ssidBytes,
+                    iterations: 4096,
+                    hash: "SHA-1"
+                },
+                keyMaterial,
+                256 // Derive 256-bit key
+            );
+
+            // Convert derivedBits to a hexadecimal string
+            const derivedKey = Array.from(new Uint8Array(derivedBits))
+                .map(b => b.toString(16).padStart(2, "0"))
+                .join("");
+
+            return derivedKey;
+        }
+
+        async function generateFiles() {
+            // Retrieve input values
+            const ssid = document.getElementById("ssid").value;
+            const password = document.getElementById("password").value;
+            const hostname = document.getElementById("hostname").value;
+
+            // Generate PSK
+            const psk = await generatePSK(ssid, password);
+
+            // Generate wpa_supplicant.conf content
+            const wifiConfig = `
+country=US
+ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+update_config=1
+
+network={
+    ssid="${ssid}"
+    psk="${psk}"
+}
+`;
+
+            // Generate hostname content
+            const hostnameConfig = hostname;
+
+            // Create and download wpa_supplicant.conf
+            createAndDownloadFile(wifiConfig, "wpa_supplicant.conf");
+
+            // Create and download hostname file (no extension)
+            createAndDownloadFile(hostnameConfig, "hostname", false);
+        }
+
+        function createAndDownloadFile(content, fileName, useExtension = true) {
+            // Ensure no extension if specified
+            if (!useExtension) {
+                fileName = fileName.replace(/\.[^/.]+$/, ""); // Remove any existing extensions
+            }
+
+            // Create a Blob object
+            const blob = new Blob([content], { type: "text/plain" });
+
+            // Create a temporary download link
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = fileName;
+
+            // Append the link, trigger the download, and remove the link
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    </script>
+</body>
+</html>
