@@ -12,7 +12,7 @@ echo "Nginx の設定を行います"
 cat <<EOL > /tmp/jupyterlab_nginx
 server {
     listen 80;
-    server_name \$SERVER_HN.local \$SERVER_IP;
+    server_name $SERVER_HN.local $SERVER_IP;
     client_max_body_size 1000M;
     location / {
         proxy_pass http://127.0.0.1:8888/;
