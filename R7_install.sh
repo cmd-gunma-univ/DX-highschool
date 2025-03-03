@@ -2,6 +2,7 @@
 
 # サーバーのIPアドレスを入力
 read -p "Enter server IP address: " SERVER_IP
+read -p "Enter gateway IP address: " GW_IP
 
 # HOSTNAMEを入力
 read -p "Enter server HOSTNAME (e.g., rp): " SERVER_HN
@@ -49,7 +50,7 @@ echo "Nginx の設定を行います"
 cat <<EOL > /tmp/jupyterlab_nginx
 server {
     listen 80;
-    server_name $SERVER_HN.local;
+    server_name $SERVER_HN.local $SERVER_IP;
 
     location / {
         proxy_pass http://127.0.0.1:8888;
@@ -73,10 +74,13 @@ echo "Jupyter Lab の設定を行います"
 cat <<EOL > $HOME/.jupyter/jupyter_lab_config.py
 c.ServerApp.ip = '0.0.0.0'
 c.ServerApp.port = 8888
+c.NotebookApp.allow_remote_access = True
 c.ServerApp.open_browser = False
 c.ServerApp.allow_root = True
 c.ServerApp.token = '${JUPYTER_TOKEN:-dx-school}'
 c.ServerApp.notebook_dir = '$HOME'
+c.ServerApp.base_url = '/'
+c.ServerApp.trust_xheaders = True
 EOL
 
 # JupyterLab の systemd サービスファイルを作成
@@ -133,6 +137,29 @@ echo "Checking Wi-Fi connection..."
 sleep 5
 nmcli device status | grep wlan0
 
+# 静的IPアドレスを設定
+sudo nmcli connection modify $SSID ipv4.addresses $SERVER_IP/24 ipv4.gateway $GW_IP ipv4.dns "8.8.8.8,8.8.4.4" ipv4.method manual
+sudo nmcli connection down $SSID && sudo nmcli connection up $SSID 
+
+# SSH を有効化
+sudo systemctl enable ssh
+sudo systemctl start ssh
+
+# SPI を有効化
+sudo raspi-config nonint do_spi 0
+
+# I2C を有効化
+sudo raspi-config nonint do_i2c 0
+
+# 設定を確認
+echo "🔍 設定確認: SSH"
+sudo systemctl is-active ssh
+
+echo "🔍 設定確認: SPI"
+lsmod | grep spi
+
+echo "🔍 設定確認: I2C"
+lsmod | grep i2c
+
 # 変更を適用するための再起動
-echo "Rebooting to apply changes..."
 sudo reboot
