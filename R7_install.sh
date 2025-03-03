@@ -1,22 +1,17 @@
+
 #!/bin/bash
+
 
 # サーバーのIPアドレスを入力
 read -p "Enter server IP address: " SERVER_IP
-read -p "Enter gateway IP address: " GW_IP
-
 # HOSTNAMEを入力
 read -p "Enter server HOSTNAME (e.g., rp): " SERVER_HN
 
-# 新しいSSIDとパスワードを入力
-read -p "Enter SSID: " SSID
-read -p "Enter Wi-Fi Password: " SSID_PW
 
 # 入力の確認
 echo "============================"
-echo "Server IP Address: $SERVER_IP"
+echo "Server IP: $SERVER_IP"
 echo "Server HOSTNAME: $SERVER_HN"
-echo "Server SSID: $SSID"
-echo "Server SSID PW: $SSID_PW"
 echo "============================"
 
 
@@ -45,23 +40,26 @@ sudo pip3 install --break-system-packages opencv-python opencv-contrib-python nu
 mkdir -p $HOME/.jupyter
 jupyter-lab --generate-config
 
+
 # Nginx の設定ファイルを作成
 echo "Nginx の設定を行います"
 cat <<EOL > /tmp/jupyterlab_nginx
 server {
     listen 80;
     server_name $SERVER_HN.local $SERVER_IP;
-
+    client_max_body_size 1000M;
     location / {
-        proxy_pass http://127.0.0.1:8888;
+        proxy_pass http://127.0.0.1:8888/;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_redirect off;
-        proxy_buffering off;
+        # WebSocket サポート
+        proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "Upgrade";
+        proxy_set_header Connection "upgrade";
+
+        proxy_buffering off;
     }
 }
 EOL
@@ -77,7 +75,7 @@ c.ServerApp.port = 8888
 c.NotebookApp.allow_remote_access = True
 c.ServerApp.open_browser = False
 c.ServerApp.allow_root = True
-c.ServerApp.token = '${JUPYTER_TOKEN:-dx-school}'
+c.ServerApp.token = ''
 c.ServerApp.notebook_dir = '$HOME'
 c.ServerApp.base_url = '/'
 c.ServerApp.trust_xheaders = True
@@ -107,9 +105,9 @@ sudo mv /tmp/Jupyterlab.service /etc/systemd/system/Jupyterlab.service
 sudo systemctl daemon-reload
 sudo systemctl enable Jupyterlab.service
 sudo systemctl start Jupyterlab.service
-
 # Nginx を再起動
 sudo systemctl restart nginx
+
 
 # ホスト名の変更
 echo "Changing hostname to $SERVER_HN..."
@@ -128,18 +126,6 @@ echo "Ensuring avahi-daemon is running for .local resolution..."
 sudo systemctl enable avahi-daemon
 sudo systemctl restart avahi-daemon
 
-# Wi-Fi を NetworkManager で設定
-echo "Connecting to new Wi-Fi network..."
-sudo nmcli device wifi connect "$SSID" password "$SSID_PW"
-
-# 接続確認
-echo "Checking Wi-Fi connection..."
-sleep 5
-nmcli device status | grep wlan0
-
-# 静的IPアドレスを設定
-sudo nmcli connection modify $SSID ipv4.addresses $SERVER_IP/24 ipv4.gateway $GW_IP ipv4.dns "8.8.8.8,8.8.4.4" ipv4.method manual
-sudo nmcli connection down $SSID && sudo nmcli connection up $SSID 
 
 # SSH を有効化
 sudo systemctl enable ssh
@@ -152,13 +138,8 @@ sudo raspi-config nonint do_spi 0
 sudo raspi-config nonint do_i2c 0
 
 # 設定を確認
-echo "🔍 設定確認: SSH"
 sudo systemctl is-active ssh
-
-echo "🔍 設定確認: SPI"
 lsmod | grep spi
-
-echo "🔍 設定確認: I2C"
 lsmod | grep i2c
 
 # 変更を適用するための再起動
