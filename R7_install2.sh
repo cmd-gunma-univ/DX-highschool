@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# サーバーのIPアドレスを入力
-read -p "Enter server IP address: " SERVER_IP
-read -p "Enter gateway IP address: " GW_IP
 
 # HOSTNAMEを入力
 read -p "Enter server HOSTNAME (e.g., rp): " SERVER_HN
@@ -10,7 +7,6 @@ read -p "Enter server HOSTNAME (e.g., rp): " SERVER_HN
 
 # 入力の確認
 echo "============================"
-echo "Server IP Address: $SERVER_IP"
 echo "Server HOSTNAME: $SERVER_HN"
 echo "============================"
 
