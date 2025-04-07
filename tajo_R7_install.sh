@@ -53,6 +53,24 @@ SSID="PCROOM"
 PASSWORD="tajo1921"
 PRIORITY=9 # 大きい方が優先度高
 
+
+# 変数を設定
+CON_NAME="ASUS_2G"
+SSID="ASUS_D8_2G"
+PASSWORD="55nosbig"
+PRIORITY=1 # 大きい方が優先度高
+
+# 設定の追加
+sudo nmcli connection add type wifi \
+    con-name "$CON_NAME" \
+    ifname wlan0 \
+    ssid "$SSID" \
+    wifi-sec.key-mgmt wpa-psk \
+    wifi-sec.psk $(wpa_passphrase "$SSID" "$PASSWORD" | grep "psk=" | grep -v "#" | awk -F= '{print $2}') \
+    connection.autoconnect yes \
+    connection.autoconnect-priority $PRIORITY \
+    802-11-wireless.hidden false
+
 # 設定の追加
 sudo nmcli connection add type wifi \
     con-name "$CON_NAME" \
