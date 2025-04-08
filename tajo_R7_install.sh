@@ -219,5 +219,5 @@ sudo systemctl is-active ssh
 lsmod | grep spi
 lsmod | grep i2c
 
-# 変更を適用するための再起動
-sudo reboot
+# 終了
+sudo shutdown -h now
