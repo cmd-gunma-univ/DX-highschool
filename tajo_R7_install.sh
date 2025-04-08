@@ -3,15 +3,14 @@
 
 
 # サーバーのIPアドレスを入力
-read -p "Enter server IP address: " SERVER_IP
-# HOSTNAMEを入力
-read -p "Enter server HOSTNAME (e.g., rp): " SERVER_HN
-
+read -p "Raspberry Pi No.: " RPNo
+SERVER_IP="192.168.1.$((RPNo + 191))"
+SERVER_HN="RP$RPNo"
 
 # 入力の確認
 echo "============================"
 echo "Server IP: $SERVER_IP"
-echo "Server HOSTNAME: $SERVER_HN"
+echo "Server HOSTNAME: $SERVER_HN.local"
 echo "============================"
 
 
@@ -30,11 +29,15 @@ sudo apt -y update
 # 必要なパッケージをインストール
 sudo apt -y install nginx git portaudio19-dev python3-pip avahi-daemon network-manager
 
+#NetworkManagerの接続ファイルを削除
+sudo rm /etc/NetworkManager/system-connections/*.nmconnection
+
+
 # 変数を設定
 CON_NAME="tajo_5G"
 SSID="PCROOM_5G"
 PASSWORD="tajo1921"
-PRIORITY=10 # 大きい方が優先度高
+PRIORITY=10
 
 # 設定の追加
 sudo nmcli connection add type wifi \
@@ -47,18 +50,44 @@ sudo nmcli connection add type wifi \
     connection.autoconnect-priority $PRIORITY \
     802-11-wireless.hidden false
 
+sudo nmcli connection modify $CON_NAME \
+  ipv4.addresses $SERVER_IP/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "192.168.0.2 8.8.8.8" \
+  ipv4.method manual
+
+
 # 変数を設定
 CON_NAME="tajo"
 SSID="PCROOM"
 PASSWORD="tajo1921"
-PRIORITY=9 # 大きい方が優先度高
+PRIORITY=9 
+
+# 設定の追加
+sudo nmcli connection add type wifi \
+    con-name "$CON_NAME" \
+    ifname wlan0 \
+    ssid "$SSID" \
+    wifi-sec.key-mgmt wpa-psk \
+    wifi-sec.psk $(wpa_passphrase "$SSID" "$PASSWORD" | grep "psk=" | grep -v "#" | awk -F= '{print $2}') \
+    connection.autoconnect yes \
+    connection.autoconnect-priority $PRIORITY \
+    802-11-wireless.hidden false
+
+sudo nmcli connection modify $CON_NAME \
+  ipv4.addresses $SERVER_IP/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "192.168.0.2 8.8.8.8" \
+  ipv4.method manual
+
+
 
 
 # 変数を設定
 CON_NAME="ASUS_2G"
 SSID="ASUS_D8_2G"
 PASSWORD="55nosbig"
-PRIORITY=1 # 大きい方が優先度高
+PRIORITY=1
 
 # 設定の追加
 sudo nmcli connection add type wifi \
@@ -71,17 +100,11 @@ sudo nmcli connection add type wifi \
     connection.autoconnect-priority $PRIORITY \
     802-11-wireless.hidden false
 
-# 設定の追加
-sudo nmcli connection add type wifi \
-    con-name "$CON_NAME" \
-    ifname wlan0 \
-    ssid "$SSID" \
-    wifi-sec.key-mgmt wpa-psk \
-    wifi-sec.psk $(wpa_passphrase "$SSID" "$PASSWORD" | grep "psk=" | grep -v "#" | awk -F= '{print $2}') \
-    connection.autoconnect yes \
-    connection.autoconnect-priority $PRIORITY \
-    802-11-wireless.hidden false
-
+sudo nmcli connection modify $CON_NAME \
+  ipv4.addresses $SERVER_IP/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "192.168.0.2 8.8.8.8" \
+  ipv4.method manual
 
 
 # JupyterLab のインストール
