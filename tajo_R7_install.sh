@@ -31,7 +31,7 @@ sudo apt -y install nginx git portaudio19-dev python3-pip avahi-daemon network-m
 
 #NetworkManagerの接続ファイルを削除
 sudo rm /etc/NetworkManager/system-connections/*.nmconnection
-
+sudo nmcli connection reload
 
 # 変数を設定
 CON_NAME="tajo_5G"
