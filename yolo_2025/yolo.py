@@ -5,7 +5,7 @@ import cv2
 model = YOLO('yolov8n.pt')  # 初回のみ自動ダウンロード
 
 # カメラ初期化
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
 
 # 解像度を下げる（320x240）
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 320*4)

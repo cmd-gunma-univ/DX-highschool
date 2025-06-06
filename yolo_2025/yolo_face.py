@@ -2,7 +2,7 @@ import cv2
 from fer import FER
 
 # カメラを開く
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0, cv2.CAP_V4L2)
 detector = FER()
 
 while True:
