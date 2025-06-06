@@ -26,7 +26,8 @@ while True:
                 cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
     cv2.imshow("Emotion", frame)
-    if cv2.waitKey(1) == 27:  # ESCキーで終了
+    # qキーで終了
+    if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
 cap.release()
