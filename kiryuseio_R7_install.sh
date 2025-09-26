@@ -78,7 +78,7 @@ sudo nmcli connection add type wifi \
 
 sudo nmcli connection modify $CON_NAME \
   ipv4.addresses $SERVER_IP/24 \
-  ipv4.gateway 192.168.1.1 \
+  ipv4.gateway 192.168.100.1 \
   ipv4.dns "8.8.8.8" \
   ipv4.method manual
 
@@ -181,7 +181,7 @@ sudo systemctl restart avahi-daemon
 
 
 # SSH を有効化
-sudo systemctl enable ssh
+sudo systemctl --now enable ssh
 sudo systemctl start ssh
 
 # SPI を有効化
