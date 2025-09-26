@@ -1,87 +1,101 @@
-
 #!/bin/bash
 
+#!/usr/bin/env bash
+set -euo pipefail
 
-# サーバーのIPアドレスを入力
-read -p "Raspberry Pi No.: " RPNo
-SERVER_IP="192.168.100.$((RPNo))"
-SERVER_HN="RP$RPNo"
-
-# 入力の確認
-echo "============================"
-echo "Server IP: $SERVER_IP"
-echo "Server HOSTNAME: $SERVER_HN.local"
-echo "============================"
-
-
-# 確認のプロンプト
-read -p "Is this correct? (y/n): " CONFIRM
-
-# "n" または "N" が入力された場合にスクリプトを中止
-if [[ "$CONFIRM" == "n" || "$CONFIRM" == "N" ]]; then
-    echo "Installation aborted."
-    exit 1
+# ===== 入力 =====
+read -rp "Raspberry Pi No. (1-254): " RPNo
+if ! [[ "$RPNo" =~ ^[0-9]+$ ]] || [ "$RPNo" -lt 1 ] || [ "$RPNo" -gt 254 ]; then
+  echo "ERROR: 1〜254 の整数で入力してください"; exit 1
 fi
 
-# apt の更新
-sudo apt -y update
+SERVER_IP="192.168.100.${RPNo}"
+SERVER_HN="RP${RPNo}"
 
-# 必要なパッケージをインストール
+echo "============================"
+echo "Server IP:      $SERVER_IP"
+echo "Server HOSTNAME ${SERVER_HN}.local"
+echo "============================"
+read -rp "Is this correct? (y/n): " CONFIRM
+[[ "$CONFIRM" =~ ^[Yy]$ ]] || { echo "Installation aborted."; exit 1; }
+
+# ===== 準備 =====
+sudo apt -y update
 sudo apt -y install nginx git portaudio19-dev python3-pip avahi-daemon network-manager
 
-#NetworkManagerの接続ファイルを削除
-sudo rm /etc/NetworkManager/system-connections/*.nmconnection
-sudo nmcli connection reload
+# NetworkManager を有効化（dhcpcd がいたら停止）
+if systemctl is-enabled dhcpcd 2>/dev/null | grep -q enabled; then
+  echo "[INFO] disable dhcpcd"
+  sudo systemctl disable --now dhcpcd || true
+fi
+echo "[INFO] enable NetworkManager"
+sudo systemctl enable --now NetworkManager
 
-# 変数を設定
+# Wi-Fi国設定やブロック解除（失敗しても続行）
+if command -v raspi-config >/dev/null 2>&1; then
+  sudo raspi-config nonint do_wifi_country JP || true
+fi
+sudo rfkill unblock wifi || true
+
+# ===== ホスト名設定 =====
+echo "[INFO] set hostname: ${SERVER_HN}"
+sudo hostnamectl set-hostname "$SERVER_HN"
+# /etc/hosts 更新（127.0.1.1 行）
+if grep -qE '^127\.0\.1\.1' /etc/hosts; then
+  sudo sed -i "s/^127\.0\.1\.1.*/127.0.1.1\t${SERVER_HN}/" /etc/hosts
+else
+  echo -e "127.0.1.1\t${SERVER_HN}" | sudo tee -a /etc/hosts >/dev/null
+fi
+
+# ===== 変数 =====
+GATEWAY="192.168.100.1"
+DNS="8.8.8.8,1.1.1.1"
+
 CON_NAME="dx-school5"
 SSID="dx-school5"
 PASSWORD="dx-school"
-PRIORITY=9 
+PRIORITY=9
 
-# 設定の追加
-sudo nmcli connection add type wifi \
-    con-name "$CON_NAME" \
-    ifname wlan0 \
-    ssid "$SSID" \
-    wifi-sec.key-mgmt wpa-psk \
-    wifi-sec.psk $(wpa_passphrase "$SSID" "$PASSWORD" | grep "psk=" | grep -v "#" | awk -F= '{print $2}') \
-    connection.autoconnect yes \
-    connection.autoconnect-priority $PRIORITY \
-    802-11-wireless.hidden false
+# Wi-Fi IF 自動検出（必要なら固定で書き換え）
+WIFI_IF="$(nmcli -t -f DEVICE,TYPE device status | awk -F: '$2=="wifi"{print $1; exit}')"
+if [ -z "$WIFI_IF" ]; then
+  echo "ERROR: Wi-Fi インタフェースが見つかりません"; nmcli device status; exit 1
+fi
+echo "[INFO] Wi-Fi IF: $WIFI_IF"
 
-sudo nmcli connection modify $CON_NAME \
-  ipv4.addresses $SERVER_IP/24 \
-  ipv4.gateway 192.168.100.1 \
-  ipv4.dns "8.8.8.8" \
+# IP重複の簡易チェック
+if ping -c1 -W1 "$SERVER_IP" >/dev/null 2>&1; then
+  read -rp "WARNING: $SERVER_IP は応答あり（重複の可能性）。続行しますか？ [y/N]: " ans
+  [[ "$ans" =~ ^[Yy]$ ]] || { echo "中止しました。"; exit 1; }
+fi
+
+# ===== 既存プロファイルの削除（同名のみ） =====
+if nmcli -t -f NAME connection show | grep -Fxq "$CON_NAME"; then
+  echo "[INFO] delete existing connection: $CON_NAME"
+  sudo nmcli connection delete "$CON_NAME"
+fi
+
+# ※ 全接続ファイル削除は危険なので既定ではしない
+# sudo rm -f /etc/NetworkManager/system-connections/*.nmconnection || true
+# sudo nmcli connection reload
+
+# ===== 新規 Wi-Fi プロファイル作成 =====
+sudo nmcli connection add type wifi con-name "$CON_NAME" ifname "$WIFI_IF" ssid "$SSID"
+sudo nmcli connection modify "$CON_NAME" \
+  wifi-sec.key-mgmt "wpa-psk" \
+  wifi-sec.psk "$PASSWORD" \
+  connection.autoconnect yes \
+  connection.autoconnect-priority "$PRIORITY" \
+  ipv4.addresses "${SERVER_IP}/24" \
+  ipv4.gateway "$GATEWAY" \
+  ipv4.dns "$DNS" \
   ipv4.method manual
+# IPv6不要なら：
+# sudo nmcli connection modify "$CON_NAME" ipv6.method ignore
 
-
-
-
-# 変数を設定
-CON_NAME="ASUS_2G"
-SSID="ASUS_D8_2G"
-PASSWORD="55nosbig"
-PRIORITY=1
-
-# 設定の追加
-sudo nmcli connection add type wifi \
-    con-name "$CON_NAME" \
-    ifname wlan0 \
-    ssid "$SSID" \
-    wifi-sec.key-mgmt wpa-psk \
-    wifi-sec.psk $(wpa_passphrase "$SSID" "$PASSWORD" | grep "psk=" | grep -v "#" | awk -F= '{print $2}') \
-    connection.autoconnect yes \
-    connection.autoconnect-priority $PRIORITY \
-    802-11-wireless.hidden false
-
-sudo nmcli connection modify $CON_NAME \
-  ipv4.addresses $SERVER_IP/24 \
-  ipv4.gateway 192.168.100.1 \
-  ipv4.dns "8.8.8.8" \
-  ipv4.method manual
-
+# 反映
+sudo nmcli connection down "$CON_NAME" || true
+sudo nmcli connection up   "$CON_NAME"
 
 # JupyterLab のインストール
 sudo pip3 install --break-system-packages jupyterlab
