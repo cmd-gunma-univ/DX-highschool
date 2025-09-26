@@ -101,7 +101,14 @@ sudo nmcli connection up   "$CON_NAME"
 sudo pip3 install --break-system-packages jupyterlab
 
 # 必要な Python ライブラリをインストール
-sudo pip3 install --break-system-packages opencv-python opencv-contrib-python numpy matplotlib tflite-runtime pillow ipywidgets sounddevice librosa
+sudo pip3 install --break-system-packages opencv-python opencv-contrib-python numpy matplotlib tflite-runtime pillow ipywidgets sounddevice librosa 
+
+# YOLO関係
+pip3 install numpy ultralytics supervision deep-sort-realtime mediapipe moviepy==1.0.3 --break-system-packages
+pip3 install opencv-python opencv-python-headless opencv-contrib-python -y --break-system-packages
+pip install moviepy==1.0.3 --no-cache-dir --break-system-packages
+pip install tensorflow-aarch64 --extra-index-url https://google-coral.github.io/py-repo/ --break-system-packages
+pip3 install ml-dtypes==0.5.1 --break-system-packages --no-cache-dir
 
 # Jupyter Lab の設定ディレクトリを作成
 mkdir -p $HOME/.jupyter
