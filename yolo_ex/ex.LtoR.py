@@ -6,7 +6,7 @@ import numpy as np
 # ===== 検出専用モデル =====
 model = YOLO("yolov8n.pt")
 
-video_path = "Videos/横断.mp4"
+video_path = "Videos/cross.mp4"
 cap = cv2.VideoCapture(video_path)
 if not cap.isOpened():
     raise RuntimeError("動画が開けませんでした。")
