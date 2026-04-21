@@ -22,17 +22,6 @@ sudo apt install -y \
   libcap-dev \
   python3-picamera2 python3-libcamera libcamera-apps-lite
 
-echo "=== 3. cleanup old broken global installs (best effort) ==="
-sudo python3 -m pip uninstall -y \
-  torch torchvision torchaudio triton \
-  facenet-pytorch fer \
-  nvidia-cublas nvidia-cuda-cupti nvidia-cuda-nvrtc nvidia-cuda-runtime \
-  nvidia-cudnn-cu13 nvidia-cufft nvidia-cufile nvidia-curand \
-  nvidia-cusolver nvidia-cusparse nvidia-cusparselt-cu13 \
-  nvidia-nccl-cu13 nvidia-nvjitlink nvidia-nvshmem-cu13 nvidia-nvtx \
-  cuda-toolkit cuda-bindings cuda-pathfinder \
-  tensorflow-aarch64 || true
-
 echo "=== 4. build Python ${PY_VER} ==="
 cd /tmp
 if [ ! -f "Python-${PY_VER}.tgz" ]; then
