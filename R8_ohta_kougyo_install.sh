@@ -3,8 +3,8 @@ set -euo pipefail
 
 PY_VER="3.11.15"
 PY_PREFIX="/opt/python311"
-VENV_DIR="$HOME/ai311"
-JUPYTER_TOKEN="ohta"
+VENV_DIR="$HOME/dx311"
+JUPYTER_TOKEN=""
 SERVICE_NAME="jupyterlab311"
 
 echo "=== 1. apt update / upgrade ==="
@@ -75,6 +75,8 @@ python -m pip install --no-cache-dir \
   jupyter-server \
   ipykernel \
   ipywidgets \
+  rpi-lgpio \
+  gdown \
   numpy \
   matplotlib \
   pillow \
@@ -88,14 +90,14 @@ python -m pip install --no-cache-dir \
   tflite-runtime==2.14.0
 
 echo "=== 8.5 register Jupyter kernel ==="
-python -m ipykernel install --user --name ai311 --display-name "Python (ai311)" || true
+python -m ipykernel install --user --name dx311 --display-name "Python (dx311)" || true
 
 echo "=== 8.6 set preferred kernel (best effort) ==="
 mkdir -p "$HOME/.jupyter/lab/user-settings/@jupyterlab/notebook-extension"
 cat > "$HOME/.jupyter/lab/user-settings/@jupyterlab/notebook-extension/tracker.jupyterlab-settings" <<EOF
 {
   "preferredKernel": {
-    "name": "ai311"
+    "name": "dx311"
   }
 }
 EOF
@@ -196,7 +198,7 @@ echo "  python -V"
 echo "  python -c 'import sys; print(sys.executable)'"
 echo
 echo "Jupyter kernel:"
-echo "  Python (ai311)"
+echo "  Python (dx311)"
 echo
 echo "Camera check (system Python):"
 echo "  python3 -c 'from picamera2 import Picamera2; print(\"picamera2 OK\")'"
